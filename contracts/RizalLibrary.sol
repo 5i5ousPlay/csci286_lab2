@@ -31,8 +31,17 @@ contract RizalLibrary {
     }
 
     modifier noHoldOrder() {
-        require(students[msg.sender].has_hold_order == false, "Only students withou hold orders can perform this operation.");
+        require(students[msg.sender].has_hold_order == false, "Only students without hold orders can perform this operation.");
         _;
+    }
+    
+    modifier hasHoldOrder() {
+        require(students[msg.sender].has_hold_order == true, "Only students with hold orders can perform this operation.");
+        _;
+    }
+    
+    function isOverdue() public onlyEnrolled view returns (bool) {
+        return (2 minutes < block.timestamp - students[msg.sender].borrowed_at);
     }
 
     constructor() {
@@ -53,13 +62,35 @@ contract RizalLibrary {
     }
 
     function returnBook() public onlyEnrolled {
-        // Student storage s = students[msg.sender];
-        // require(s.has_borrowed==true, "You don't have a book to return.");
-        // returns book; add to balance if late return; set hold order to true
+        Student storage s = students[msg.sender];
+        require(s.has_borrowed == true, "Only students with borrowed books can return books.");
+
+        
+        if(block.timestamp - s.borrowed_at > BORROW_DURATION ) {
+            // if late, adds hold order and fine to student
+            s.has_hold_order = true;
+            s.balance += DEFAULT_FINE;
+        } else {
+            // no fines, the student returns it before the deadline
+        }
+
+        // clears the variables set by the borrow function
+        s.has_borrowed = false;
+        s.borrowed_at = 0;
+        s.current_book = "";
     }
 
-    function payBalance() public payable onlyEnrolled {
+    function payBalance() public payable onlyEnrolled hasHoldOrder {
         // allows student to pay the balance
-        // idk if partial payments should be allowed or if this should be a one time full payment
+        // setting limitation that the payment must be equal to the balance
+        // a one-time big payment that clears the hold order
+        // simplifies the system, and why would you have partial payments? just make the payment when
+        // you have enough wei because partial payments wont lift your hold order
+        Student storage s = students[msg.sender];
+        require(msg.value == s.balance, "You need to pay your exact balance in wei.");
+
+        s.has_hold_order = false;
+        s.balance = 0;
+
     }
 }
