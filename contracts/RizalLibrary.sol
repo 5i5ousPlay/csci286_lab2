@@ -39,10 +39,7 @@ contract RizalLibrary {
         require(students[msg.sender].has_hold_order == true, "Only students with hold orders can perform this operation.");
         _;
     }
-    
-    function isOverdue() public onlyEnrolled view returns (bool) {
-        return (2 minutes < block.timestamp - students[msg.sender].borrowed_at);
-    }
+
 
     constructor() {
         librarian = msg.sender;
